@@ -5,13 +5,13 @@ extends Node2D
 
 func createRandom():
 	var reflexMatrix=[		randf()-.5,randf()-.5,
-							randf()-.5,randf()-.5,
-							randf()-.5,randf()-.5,
-							randf()-.5,randf()-.5,
-							randf()-.5,randf()-.5,
-							randf()-.5,randf()-.5,
-							randf()-.5,randf()-.5,
-							randf()-.5,randf()-.5,
+					randf()-.5,randf()-.5,
+					randf()-.5,randf()-.5,
+					randf()-.5,randf()-.5,
+					randf()-.5,randf()-.5,
+					randf()-.5,randf()-.5,
+					randf()-.5,randf()-.5,
+					randf()-.5,randf()-.5,
 	]
 	return reflexMatrix
 
