@@ -1,0 +1,159 @@
+extends Node2D
+
+@export var Individuals:Array
+@export var MainScene: PackedScene
+
+func createRandom():
+	var reflexMatrix=[		randf()-.5,randf()-.5,
+							randf()-.5,randf()-.5,
+							randf()-.5,randf()-.5,
+							randf()-.5,randf()-.5,
+							randf()-.5,randf()-.5,
+							randf()-.5,randf()-.5,
+							randf()-.5,randf()-.5,
+							randf()-.5,randf()-.5,
+	]
+	return reflexMatrix
+
+
+class Individual extends Object:
+	func _init(genes,name):
+		self.genes=genes
+		self.name=name
+	
+	var name="";
+	
+	var genes=[]
+	var representation:Area2D=null
+	var score=-1
+	var bestScore=0
+	func getScore(score):
+		self.score=score
+		print(self.score)
+		printerr("got score")
+		if score>self.bestScore:
+			self.bestScore=score
+		self.gotScore.emit(self)
+	
+	signal gotScore(individual:Individual)
+
+func shallowCopy(ind):
+	var new_Ind=Individual.new(ind.genes,ind.name+"I")
+	new_Ind.bestScore=ind.bestScore
+	return new_Ind;
+
+func Ind_got_score(ind):
+	var count=0
+	for i in Individuals:
+		if(i.score<0):
+			count+=1
+	if(count==0):
+		printerr("done scoring")
+		newGeneration()
+
+var subViews=[]
+
+# Tournament Selection. Nasumično bira nekoliko jedinki, pa uzima najbolju među njima
+func select(population):
+	var chosen = []
+	var tournament_size = 3
+	while len(chosen) < int(len(population) / 2):
+		var tournament = []
+		for i in range(tournament_size):
+			tournament.append(population[randi() % len(population)])
+		tournament.sort_custom(CustomSorter, "compare_individuals")  
+		chosen.append(tournament[0])
+	return chosen
+
+# Heuristički crossover. Koristi se vrednost roditelja da se više gena uzima od boljeg
+
+func cross(population):
+	var children = []
+	var original_size = population.size()
+
+	while children.size() < original_size:
+		var parent1 = population[randi() % population.size()]
+		var parent2 = population[randi() % population.size()]
+
+		var better
+		var worse
+		if parent1.fitness > parent2.fitness:
+			better = parent1
+			worse = parent2
+		else:
+			better = parent2
+			worse = parent1
+
+		var child_genes = []
+		for i in range(better.genes.size()):
+			var r = randf()
+			var gene = better.genes[i] + r * (better.genes[i] - worse.genes[i])
+			child_genes.append(gene)
+
+		var child = Individual.new(child_genes, str(numberOfIndividuals))
+		numberOfIndividuals += 1
+		children.append(child)
+
+	return children
+
+#Mutacija najgore jedinke. Ima li to smisla sad? ne
+func mutate(population):
+	var worst = population[0]
+	for ind in population:
+		if ind.fitness < worst.fitness:
+			worst = ind
+	var gene_index = randi() % worst.genes.size()
+	worst.genes[gene_index] += randf_range(-0.1, 0.1)
+	worst.name += "M"
+	return population
+
+func newGeneration():
+	var population=[]
+	
+	Individuals.sort_custom(func(ind1,ind2) : return ind1.score>ind2.score)
+	for i in Individuals:
+		population.append(shallowCopy(i))
+	population=mutate(cross(select(population)))
+	reset(population);
+
+func reset(population):
+	#clear subviews
+	for v in subViews:
+		for n in v.get_children():
+			v.remove_child(n)
+			n.queue_free()
+	Individuals=[]
+	for i in range(len(subViews)):
+		var ms=MainScene.instantiate()
+		var ind=population[i]
+		ind.representation=ms
+		Individuals.append(ind)
+		ind.gotScore.connect(Ind_got_score)
+		ms.reflexMatrix=ind.genes
+		
+		ms.gameover.connect(ind.getScore)
+		ms.NameLabel=ind.name
+		ms.BestScore=ind.bestScore;
+		subViews[i].add_child(ms)
+	
+
+func _ready():
+	seed(43)
+	var gridchildren=$GridContainer.get_children()
+	#subViews=[$GridContainer/SubViewportContainer/SubViewport,$GridContainer/SubViewportContainer2/SubViewport
+	#,$GridContainer/SubViewportContainer3/SubViewport,$GridContainer/SubViewportContainer4/SubViewport]
+	#Individuals=[$SubViewportContainer/SubViewport/Main,$SubViewportContainer2/SubViewport/Main]
+	subViews=[]
+	for g in gridchildren:
+		subViews.append(g.get_child(0))
+	var population=[]
+	var i=0
+	for m in subViews:
+		population.append(Individual.new(createRandom(),"{"+str(i)+"}"))
+		i+=1
+		numberOfIndividuals+=1
+	reset(population);
+	
+
+func _process(delta):
+	pass
